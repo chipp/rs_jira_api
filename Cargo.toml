@@ -1,0 +1,17 @@
+[package]
+name = "jira_api"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+http_client = { git = "https://github.com/chipp/http_client", tag = "0.4.13" }
+url = "2.4.0"
+
+serde = { version = "1.0", features = ["derive"] }
+chrono = "0.4"
+
+log = "0.4"
+serde_json = "1.0"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+auth = { git = "https://github.com/chipp/auth", tag = "2.0.1" }
