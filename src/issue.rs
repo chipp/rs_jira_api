@@ -17,8 +17,14 @@ impl fmt::Display for Issue {
     }
 }
 
-pub const MANDATORY_ISSUE_FIELDS: &[&str] =
-    &["summary", "creator", "created", "issuetype", "status"];
+pub const MANDATORY_ISSUE_FIELDS: &[&str] = &[
+    "created",
+    "creator",
+    "issuetype",
+    "priority",
+    "status",
+    "summary",
+];
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Fields {
