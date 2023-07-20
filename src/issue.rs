@@ -17,6 +17,9 @@ impl fmt::Display for Issue {
     }
 }
 
+pub const MANDATORY_ISSUE_FIELDS: &[&str] =
+    &["summary", "creator", "created", "issuetype", "status"];
+
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Fields {
     pub summary: String,
@@ -27,7 +30,7 @@ pub struct Fields {
     pub created: DateTime<Utc>,
 
     #[serde(deserialize_with = "crate::date_format::deserialize_optional_date_with_tz")]
-    #[serde(rename = "resolutiondate")]
+    #[serde(rename = "resolutiondate", default)]
     pub resolution_date: Option<DateTime<Utc>>,
 
     pub assignee: Option<User>,
@@ -43,7 +46,7 @@ pub struct Fields {
     #[serde(rename = "issuetype")]
     pub issue_type: IssueType,
     pub status: IssueStatus,
-    pub priority: IssuePriority,
+    pub priority: Option<IssuePriority>,
 
     pub parent: Option<ShortIssue>,
     pub subtasks: Option<Vec<ShortIssue>>,
@@ -60,6 +63,7 @@ pub struct Fields {
     #[serde(rename = "aggregatetimespent")]
     pub total_time_spent: Option<u32>,
 
+    #[serde(default)]
     pub labels: Vec<String>,
 }
 

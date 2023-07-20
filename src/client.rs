@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use url::Url;
 use {
     super::board::Board,
@@ -10,8 +12,10 @@ use {
 };
 
 use http_client::{curl::easy::Auth, Error, HttpClient, HttpMethod};
-use log::trace;
+use log::{debug, trace};
 use serde::{Deserialize, Serialize};
+
+use crate::issue::MANDATORY_ISSUE_FIELDS;
 
 pub struct Client<'a> {
     inner: HttpClient<'a>,
@@ -92,7 +96,13 @@ impl Client<'_> {
         fields: Option<&[&str]>,
         expand: Option<&[&str]>,
     ) -> Result<Issue, Error> {
-        let fields = fields.unwrap_or_default().join(",");
+        let fields = fields.unwrap_or_default();
+        let mut all_fields = HashSet::<&str>::new();
+        all_fields.extend(fields);
+        all_fields.extend(MANDATORY_ISSUE_FIELDS);
+
+        let fields = all_fields.into_iter().collect::<Vec<_>>().join(",");
+
         let expand = expand.unwrap_or_default().join(",");
 
         let mut request = self.inner.new_request_with_params(
@@ -151,11 +161,18 @@ impl Client<'_> {
             expand: Option<&'a [&'a str]>,
         }
 
+        let fields = fields.unwrap_or_default();
+        let mut all_fields = HashSet::<&str>::new();
+        all_fields.extend(fields);
+        all_fields.extend(MANDATORY_ISSUE_FIELDS);
+
+        let fields = all_fields.into_iter().collect::<Vec<_>>();
+
         let body = Body {
             jql,
             start_at,
             max_results,
-            fields,
+            fields: Some(&fields),
             expand,
         };
 
@@ -251,7 +268,7 @@ impl Client<'_> {
     }
 
     pub async fn update_issue_labels(&self, key: &str, labels: &[String]) -> Result<(), Error> {
-        let mut request = self.inner.new_request(&["issue", key]);
+        let mut request = self.inner.new_request(&["api", "2", "issue", key]);
         request.method = HttpMethod::Put;
 
         let body = serde_json::json!({
