@@ -15,7 +15,7 @@ use http_client::{curl::easy::Auth, Error, HttpClient, HttpMethod};
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use crate::issue::MANDATORY_ISSUE_FIELDS;
+use crate::issue::{ModifyFields, MANDATORY_ISSUE_FIELDS};
 
 pub struct Client<'a> {
     inner: HttpClient<'a>,
@@ -267,6 +267,24 @@ impl Client<'_> {
 
         self.inner
             .perform_request(request, http_client::json::parse_json)
+            .await
+    }
+
+    pub async fn update_issue(&self, key: &str, modify: ModifyFields) -> Result<(), Error> {
+        #[derive(Debug, Serialize)]
+        struct RequestBody {
+            fields: ModifyFields,
+        }
+
+        let mut request = self.inner.new_request(&["api", "2", "issue", key]);
+        request.method = HttpMethod::Put;
+
+        let body = RequestBody { fields: modify };
+        request.body = Some(serde_json::to_vec(&body).unwrap());
+        request.add_header("Content-Type", "application/json; charset=utf-8");
+
+        self.inner
+            .perform_request(request, http_client::parse_void)
             .await
     }
 
