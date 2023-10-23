@@ -29,6 +29,7 @@ pub const MANDATORY_ISSUE_FIELDS: &[&str] = &[
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Fields {
     pub summary: String,
+    pub description: Option<String>,
 
     pub creator: User,
 

@@ -12,7 +12,7 @@ use {
 };
 
 use http_client::{curl::easy::Auth, Error, HttpClient, HttpMethod};
-use log::{debug, trace};
+use log::trace;
 use serde::{Deserialize, Serialize};
 
 use crate::issue::MANDATORY_ISSUE_FIELDS;
@@ -194,7 +194,10 @@ impl Client<'_> {
 
         let result = self
             .inner
-            .get_with_params(&["api", "2", "user"], &[("username", username.as_ref())])
+            .get_with_params(
+                &["api", "2", "user"],
+                &[("username", username.as_ref()), ("expand", "groups")],
+            )
             .await;
 
         trace!("loaded user information {}", username);

@@ -7,6 +7,19 @@ pub struct User {
     pub name: String,
     #[serde(rename = "displayName")]
     pub display_name: Option<String>,
+    #[serde(default)]
+    pub groups: Groups,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
+pub struct Groups {
+    pub size: usize,
+    pub items: Vec<Group>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub struct Group {
+    pub name: String,
 }
 
 use std::fmt;
@@ -64,7 +77,11 @@ mod tests {
             "locale": "en_US",
             "name": "chipp",
             "self": "https://jira.example.io/rest/api/2/user?username=chipp",
-            "timeZone": "Europe/Vilnius"
+            "timeZone": "Europe/Vilnius",
+            "groups": {
+                "size": 0,
+                "items": []
+            }
         });
 
         let issue: super::User = serde_json::from_value(json).unwrap();
