@@ -11,55 +11,56 @@ use {
     super::worklog::Worklogs,
 };
 
-use http_client::{curl::easy::Auth, Error, HttpClient, HttpMethod};
+use chipp_http::{
+    curl::easy::{Easy, List},
+    Error, HttpClient, HttpMethod, Interceptor, Request,
+};
 use log::trace;
 use serde::{Deserialize, Serialize};
 
 use crate::issue::{ModifyFields, MANDATORY_ISSUE_FIELDS};
 
-pub struct Client<'a> {
-    inner: HttpClient<'a>,
+pub struct Client {
+    inner: HttpClient<Authenticator>,
 }
 
-impl<'a> Client<'a> {
-    pub fn new<U>(jira_base_url: U) -> Option<Client<'a>>
+struct Authenticator(String);
+
+impl Interceptor for Authenticator {
+    fn modify(&self, _: &mut Easy, _: &Request) {}
+
+    fn add_headers(&self, headers: &mut List, _: &Request) {
+        let token = jira_credentials(&self.0);
+        let header = format!("Authorization: Bearer {token}");
+        headers.append(&header).unwrap();
+    }
+}
+
+impl<'a> Client {
+    pub fn new<U>(jira_base_url: U) -> Option<Client>
     where
         U: AsRef<str>,
     {
         let mut jira_base_url = Url::parse(jira_base_url.as_ref()).ok()?;
-        jira_base_url.set_path("/rest");
+        jira_base_url.path_segments_mut().unwrap().push("rest");
 
-        let mut inner = HttpClient::new(&jira_base_url).unwrap();
-
-        if let Some(domain) = jira_base_url.domain().map(ToOwned::to_owned) {
-            inner.set_interceptor(move |easy| {
-                let mut auth = Auth::new();
-
-                auth.basic(true);
-                easy.http_auth(&auth).unwrap();
-
-                let (username, password) = jira_credentials(&domain);
-
-                easy.username(&username).unwrap();
-                easy.password(&password).unwrap();
-            });
-        }
+        let domain = jira_base_url.domain().map(ToOwned::to_owned)?;
+        let inner = HttpClient::new(&jira_base_url)
+            .unwrap()
+            .with_interceptor(Authenticator(domain));
 
         Some(Client { inner })
     }
 }
 
 #[cfg(target_os = "macos")]
-fn jira_credentials(domain: &str) -> (String, String) {
-    auth::user_and_password(domain)
+fn jira_credentials(domain: &str) -> String {
+    auth::token(domain, "access_token")
 }
 
 #[cfg(target_os = "linux")]
-fn jira_credentials(_domain: &str) -> (String, String) {
-    (
-        std::env::var("JIRA_USER").expect("should have JIRA_USER"),
-        std::env::var("JIRA_PASSWORD").expect("should have JIRA_PASSWORD"),
-    )
+fn jira_credentials(_: &str) -> String {
+    std::env::var("JIRA_ACCESS_TOKEN").expect("should have JIRA_ACCESS_TOKEN")
 }
 
 #[derive(Deserialize)]
@@ -80,13 +81,13 @@ pub struct IssuesPageResponse {
     pub issues: Vec<Issue>,
 }
 
-impl Client<'_> {
+impl Client {
     pub async fn get_project(&self, key: &str) -> Result<Project, Error> {
         let mut request = self.inner.new_request(&["api", "2", "project", key]);
         request.set_retry_count(3);
 
         self.inner
-            .perform_request(request, http_client::json::parse_json)
+            .perform_request(request, chipp_http::json::parse_json)
             .await
     }
 
@@ -112,7 +113,7 @@ impl Client<'_> {
         request.set_retry_count(3);
 
         self.inner
-            .perform_request(request, http_client::json::parse_json)
+            .perform_request(request, chipp_http::json::parse_json)
             .await
     }
 
@@ -123,7 +124,7 @@ impl Client<'_> {
         request.set_retry_count(3);
 
         self.inner
-            .perform_request(request, http_client::json::parse_json)
+            .perform_request(request, chipp_http::json::parse_json)
             .await
     }
 
@@ -139,7 +140,7 @@ impl Client<'_> {
         request.set_retry_count(3);
 
         self.inner
-            .perform_request(request, http_client::json::parse_json)
+            .perform_request(request, chipp_http::json::parse_json)
             .await
     }
 
@@ -182,7 +183,7 @@ impl Client<'_> {
         request.set_json_body(&body);
 
         self.inner
-            .perform_request(request, http_client::json::parse_json)
+            .perform_request(request, chipp_http::json::parse_json)
             .await
     }
 
@@ -215,7 +216,7 @@ impl Client<'_> {
         request.set_retry_count(3);
 
         self.inner
-            .perform_request(request, http_client::json::parse_json)
+            .perform_request(request, chipp_http::json::parse_json)
             .await
     }
 
@@ -234,7 +235,7 @@ impl Client<'_> {
         request.set_retry_count(3);
 
         self.inner
-            .perform_request(request, http_client::json::parse_json)
+            .perform_request(request, chipp_http::json::parse_json)
             .await
     }
 
@@ -245,7 +246,7 @@ impl Client<'_> {
         request.set_retry_count(3);
 
         self.inner
-            .perform_request(request, http_client::json::parse_json)
+            .perform_request(request, chipp_http::json::parse_json)
             .await
     }
 
@@ -266,7 +267,7 @@ impl Client<'_> {
         request.set_retry_count(3);
 
         self.inner
-            .perform_request(request, http_client::json::parse_json)
+            .perform_request(request, chipp_http::json::parse_json)
             .await
     }
 
@@ -284,7 +285,7 @@ impl Client<'_> {
         request.add_header("Content-Type", "application/json; charset=utf-8");
 
         self.inner
-            .perform_request(request, http_client::parse_void)
+            .perform_request(request, chipp_http::parse_void)
             .await
     }
 
@@ -301,7 +302,7 @@ impl Client<'_> {
         request.add_header("Content-Type", "application/json; charset=utf-8");
 
         self.inner
-            .perform_request(request, http_client::parse_void)
+            .perform_request(request, chipp_http::parse_void)
             .await
     }
 }

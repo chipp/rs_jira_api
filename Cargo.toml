@@ -4,7 +4,7 @@ version = "1.0.2"
 edition = "2021"
 
 [dependencies]
-http_client = { git = "https://github.com/chipp/http_client", tag = "0.4.13" }
+chipp_http = "1.2.0"
 url = "2.4.0"
 
 serde = { version = "1.0", features = ["derive"] }
