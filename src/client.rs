@@ -55,7 +55,7 @@ impl<'a> Client {
 
 #[cfg(target_os = "macos")]
 fn jira_credentials(domain: &str) -> String {
-    auth::token(domain, "access_token")
+    chipp_auth::token(domain, "access_token")
 }
 
 #[cfg(target_os = "linux")]
