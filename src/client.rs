@@ -82,6 +82,10 @@ pub struct IssuesPageResponse {
 }
 
 impl Client {
+    pub async fn myself(&self) -> Result<User, Error> {
+        self.inner.get(["api", "2", "myself"]).await
+    }
+
     pub async fn get_project(&self, key: &str) -> Result<Project, Error> {
         let mut request = self.inner.new_request(&["api", "2", "project", key]);
         request.set_retry_count(3);
