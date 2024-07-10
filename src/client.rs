@@ -12,7 +12,7 @@ use {
 };
 
 use chipp_http::{
-    curl::easy::{Easy, List},
+    curl::easy::{Auth, Easy, List},
     Error, HttpClient, HttpMethod, Interceptor, Request,
 };
 use log::trace;
@@ -24,20 +24,40 @@ pub struct Client {
     inner: HttpClient<Authenticator>,
 }
 
-struct Authenticator(String);
+pub enum AuthType {
+    BasicAuth,
+    AccessToken,
+}
+
+struct Authenticator {
+    domain: String,
+    auth_type: AuthType,
+}
 
 impl Interceptor for Authenticator {
-    fn modify(&self, _: &mut Easy, _: &Request) {}
+    fn modify(&self, easy: &mut Easy, _: &Request) {
+        if let AuthType::BasicAuth = self.auth_type {
+            let (user, pass) = jira_user_pass(&self.domain);
+            easy.username(&user).unwrap();
+            easy.password(&pass).unwrap();
+
+            let mut auth = Auth::new();
+            auth.basic(true);
+            easy.http_auth(&auth).unwrap();
+        }
+    }
 
     fn add_headers(&self, headers: &mut List, _: &Request) {
-        let token = jira_credentials(&self.0);
-        let header = format!("Authorization: Bearer {token}");
-        headers.append(&header).unwrap();
+        if let AuthType::AccessToken = self.auth_type {
+            let token = jira_access_token(&self.domain);
+            let header = format!("Authorization: Bearer {token}");
+            headers.append(&header).unwrap();
+        }
     }
 }
 
 impl<'a> Client {
-    pub fn new<U>(jira_base_url: U) -> Option<Client>
+    pub fn new<U>(jira_base_url: U, auth_type: AuthType) -> Option<Client>
     where
         U: AsRef<str>,
     {
@@ -47,19 +67,32 @@ impl<'a> Client {
         let domain = jira_base_url.domain().map(ToOwned::to_owned)?;
         let inner = HttpClient::new(&jira_base_url)
             .unwrap()
-            .with_interceptor(Authenticator(domain));
+            .with_interceptor(Authenticator { domain, auth_type });
 
         Some(Client { inner })
     }
 }
 
 #[cfg(target_os = "macos")]
-fn jira_credentials(domain: &str) -> String {
+fn jira_user_pass(domain: &str) -> (String, String) {
+    chipp_auth::user_and_password(domain)
+}
+
+#[cfg(target_os = "linux")]
+fn jira_user_pass(_: &str) -> String {
+    (
+        std::env::var("JIRA_USER").expect("should have JIRA_USER"),
+        std::env::var("JIRA_PASS").expect("should have JIRA_PASS"),
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn jira_access_token(domain: &str) -> String {
     chipp_auth::token(domain, "access_token")
 }
 
 #[cfg(target_os = "linux")]
-fn jira_credentials(_: &str) -> String {
+fn jira_access_token(_: &str) -> String {
     std::env::var("JIRA_ACCESS_TOKEN").expect("should have JIRA_ACCESS_TOKEN")
 }
 
